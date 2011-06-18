@@ -44,7 +44,7 @@ struct Camera {
 	glLoadIdentity();
 	glOrtho(0,static_cast<float>(w),static_cast<float>(h),0.f,-1.f,1.f);
 	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	//glLoadIdentity();
     }
 };
 

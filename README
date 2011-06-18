@@ -1,0 +1,8 @@
+Project still work in progress.
+
+Written for GNU Linux installation with X.
+
+Dependencies:
+    libgl
+    libglu
+    libX11

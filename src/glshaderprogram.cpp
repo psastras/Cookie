@@ -1,6 +1,11 @@
 #include "glshaderprogram.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <sstream>
+#include <fstream>
+
+using namespace std;
 GLShaderProgram::GLShaderProgram() {
     programId_ =  glCreateProgram();
 }
@@ -26,13 +31,32 @@ void printLog(GLuint obj) {
 }
 
 void GLShaderProgram::loadShaderFromSource(GLenum type, std::string source) {
+    stringstream ss;
+    if(type == GL_FRAGMENT_SHADER)
+	ss << "#define _FRAGMENT_" << endl;
+    else if(type == GL_VERTEX_SHADER)
+	ss << "#define _VERTEX_" << endl;
+    else if(type == GL_GEOMETRY_SHADER)
+	ss << "#define _GEOMETRY_" << endl;
+    ifstream file(source.c_str());
+    string line;
+    if (file.is_open()) {
+       while (file.good()) {
+	 getline(file, line);
+	 ss << line << endl;
+      }
+      file.close();
+    } else {
+	cerr << "Failed to open file " << source << endl;
+	return;
+    }
+    std::string str = ss.str();
+    int length = str.length();
+    const char *data = str.c_str();
     GLuint id = glCreateShader(type);
-    GLint length;
-    char *str = readFile(source.c_str(), length);
-    glShaderSource(id, 1, (const char **)&str , &length);
+    glShaderSource(id, 1, (const char **)&data, &length);
     glCompileShader(id);
     printLog(id);
-    free(str);
     glAttachShader(programId_, id);
     shaders_.push_back(id);
 }
@@ -56,12 +80,12 @@ char * GLShaderProgram::readFile(const char *path, GLint &length) {
 	len = ftell(fd);
 	length = len;
 	fseek(fd, 0, SEEK_SET);
-	if (!(str = (char *)malloc(len * sizeof(char)))) {
+	if (!(str = (char *)malloc((len) * sizeof(char)))) {
 		cerr << "Can't malloc space for " << path << endl;
 		return NULL;
 	}
 	r = fread(str, sizeof(char), len, fd);
-	str[r - 1] = '\0'; /* Shader sources have to term with null */
+	//str[r - 1] = '\0'; /* Shader sources have to term with null */
 	fclose(fd);
 
 	return str;

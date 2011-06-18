@@ -11,7 +11,7 @@ GLFramebufferObject::GLFramebufferObject(GLFramebufferObjectParams &params) {
     // is not correct it will probably result in a gl error
 
     this->allocFramebuffer(params);
-    //GLERROR("creating framebuffer object");
+    GLERROR("creating framebuffer object");
 
 }
 

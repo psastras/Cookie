@@ -32,4 +32,12 @@ class GLQuad : public GLPrimitive {
 	void tesselate(float3 tess, float3 translate, float3 scale);
 };
 
+class GLPlane : public GLPrimitive {
+    public:
+	GLPlane(float3 tess, float3 translate, float3 scale);
+	~GLPlane();
+
+	void tesselate(float3 tess, float3 translate, float3 scale);
+};
+
 #endif // GLPRIMITIVE_H

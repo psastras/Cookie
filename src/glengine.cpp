@@ -12,15 +12,15 @@ GLEngine::GLEngine(WindowProperties &properties) {
 
     //init gl setup
     glClearColor(0.0, 0.0, 0.0, 1.0);
-    glEnable(GL_TEXTURE_2D);
+    //glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
+    glFrontFace(GL_CW);
     glDisable(GL_DITHER);
-  //  glPolygonMode(GL_FRONT, GL_LINE);
+
     camera_.center = float3(0.0, 0.0, 0.0);
-    camera_.eye = float3(0.0, 1.0, 1.0);
+    camera_.eye = float3(0.0, 0.0, 1.0);
     camera_.up = float3(0.0, 1.0, 0.0);
     camera_.near = 0.1;
     camera_.far = 100.0;
@@ -30,8 +30,8 @@ GLEngine::GLEngine(WindowProperties &properties) {
     params.width = properties.width;
     params.height = properties.height;
     params.hasDepth = true;
-    params.depthFormat = GL_DEPTH_COMPONENT32F;
-    params.format = GL_RGBA32F;
+    params.depthFormat = GL_DEPTH_COMPONENT;
+    params.format = GL_RGBA;
     params.nColorAttachments = 1;
     params.nSamples = 16;
 
@@ -43,16 +43,29 @@ GLEngine::GLEngine(WindowProperties &properties) {
 
     pFramebuffer = new GLFramebufferObject(params);
 
-    pQuad = new GLQuad(float3(100, 100, 0),
-			   float3::zero(),
-			   float3::one());
-    quad0_ = new GLQuad(float3(100,100,0), float3(0.0f, 0.0f, 0.0), float3::one());
+
+    quad0_ = new GLQuad(float3(136, 77, 0),
+			float3(0.5, 0.5, 0),
+			float3(1366, 768, 1));
+
+    quad1_ = new GLQuad(float3(1, 1, 0),
+			float3(0.5, 0.5, 0),
+			float3(1366, 768, 1));
+
+    plane0_ = new GLPlane(float3(10, 0, 10),
+			 float3(0, 0, 0),
+			 float3(100, 1, 100));
 
     //load shader programs
     shaderPrograms_["default"] = new GLShaderProgram();
-    shaderPrograms_["default"]->loadShaderFromSource(GL_VERTEX_SHADER, "shaders/default.vert");
-    shaderPrograms_["default"]->loadShaderFromSource(GL_FRAGMENT_SHADER, "shaders/default.frag");
+    shaderPrograms_["default"]->loadShaderFromSource(GL_VERTEX_SHADER, "shaders/default.glsl");
+    shaderPrograms_["default"]->loadShaderFromSource(GL_FRAGMENT_SHADER, "shaders/default.glsl");
     shaderPrograms_["default"]->link();
+
+    shaderPrograms_["water"] = new GLShaderProgram();
+    shaderPrograms_["water"]->loadShaderFromSource(GL_VERTEX_SHADER, "shaders/water.glsl");
+    shaderPrograms_["water"]->loadShaderFromSource(GL_FRAGMENT_SHADER, "shaders/water.glsl");
+    shaderPrograms_["water"]->link();
 }
 
 
@@ -67,24 +80,32 @@ void GLEngine::resize(int w, int h) {
 
 void GLEngine::draw(int time, float dt, const KeyboardController *keyController) {
     processKeyEvents(keyController, dt);
+
+    glPolygonMode(GL_FRONT, GL_LINE);
+    glEnable(GL_DEPTH_TEST);
     int w = width_, h = height_;
     camera_.perspective_camera(width_, height_);
     pMultisampleFramebuffer->bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    pQuad->draw();
+    shaderPrograms_["water"]->bind();
+    plane0_->draw();
+    shaderPrograms_["water"]->release();
     pMultisampleFramebuffer->release();
     pMultisampleFramebuffer->blit(*pFramebuffer);
 
+    glDisable(GL_DEPTH_TEST);
     camera_.orthogonal_camera(width_, height_);
- glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glPolygonMode(GL_FRONT, GL_FILL);
     shaderPrograms_["default"]->bind();
     glActiveTexture(GL_TEXTURE0);
+    pFramebuffer->bindsurface(0);
     //glBindTexture(GL_TEXTURE_2D, pFramebuffer->texture()[0]);
-    glBindTexture(GL_TEXTURE_2D, pFramebuffer->depth());
+    //glBindTexture(GL_TEXTURE_2D, pFramebuffer->depth());
     shaderPrograms_["default"]->setUniformValue("tex", 0);
-    DRAW_GLQUAD
+    quad1_->draw();
     pFramebuffer->unbindsurface();
     shaderPrograms_["default"]->release();
+
 }
 
 

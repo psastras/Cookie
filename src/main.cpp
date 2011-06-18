@@ -164,7 +164,7 @@ int main(int argc, char *argv[]) {
 	    glListBase(0);
 
 	    glXSwapBuffers(dpy, win);
-	    //glFinish();
+	    glFinish();
 
 	    keycontroller->swapBuffers();
 

@@ -33,7 +33,7 @@ protected:
 
     void processKeyEvents(const KeyboardController *keycontroller, float dt);
 
-    GLPrimitive *quad0_, *quad1;
+    GLPrimitive *quad0_, *quad1_, *plane0_;
     int width_, height_;
     Camera camera_;
 

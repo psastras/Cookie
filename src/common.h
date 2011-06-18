@@ -2,6 +2,7 @@
 #define COMMON_H
 
 #include <iostream>
+
 #include <math.h>
 #include <assert.h>
 
