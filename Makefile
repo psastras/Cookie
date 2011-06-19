@@ -6,14 +6,15 @@ CC = g++
 CFLAGS = -Wall -O3
 
 COMPILE = $(CC) $(CFLAGS) -c
-LDFLAGS = -lX11 -lGL -lGLU
-SRCDIR := src/
-OBJFILES := $(patsubst src/%.cpp,src/%.o,$(wildcard src/*.cpp))
+LDFLAGS = -lm -lX11 -lGL -lGLU -lfftw3
+SRCDIR := src
+VSMLDIR := 3rdparty/VSML/
+OBJFILES := $(patsubst $(SRCDIR)/%.cpp,$(SRCDIR)/%.o,$(wildcard $(SRCDIR)/*.cpp $(VSMLDIR)/*.cpp))
 
 all: water
 
 water: $(OBJFILES)
-	$(CC) $(LDFLAGS) -o bin/water $(OBJFILES)
+	$(CC) -o bin/water $(OBJFILES) $(LDFLAGS)
 
 
 %.o: %.cpp
@@ -22,4 +23,4 @@ water: $(OBJFILES)
 
 .PHONY: clean
 clean:
-	rm -f $(SRCDIR)*.o
+	rm -f $(SRCDIR)/*.o

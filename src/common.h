@@ -168,6 +168,25 @@ struct float2 {
     };
 };
 
+struct float4 {
+    union {
+	struct {
+	    float x, y, z, w;
+	};
+	float data[4];
+    };
+};
+
+struct double4 {
+    union {
+	struct {
+	    double x, y, z, w;
+	};
+	double data[4];
+    };
+};
+
+
 
 
 #endif

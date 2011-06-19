@@ -11,6 +11,8 @@ GLPrimitive::~GLPrimitive() {
 }
 
 void GLPrimitive::draw() {
+
+
      glBindBuffer(GL_ARRAY_BUFFER, vertexId_);
      glEnableClientState(GL_VERTEX_ARRAY);
      glVertexPointer(3, GL_FLOAT, sizeof(GLVertex), BUFFER_OFFSET(vOffset_));   //The starting point of the VBO, for the vertices
@@ -46,9 +48,9 @@ void GLQuad::tesselate(float3 tess, float3 translate, float3 scale) {
     GLVertex *pVertex = new GLVertex[(int)((tess.x + 1) * (tess.y + 1))];
     for(int y=0, i=0; y<=tess.y; y++) {
 	for(int x=0; x<=tess.x; x++, i++) {
-	    pVertex[i].p = (float3(-0.5, -0.5, 0.0) + translate + delta * float3(x, y, 0));
+	    pVertex[i].p = float3(-0.5, -0.5, 0.0) * scale  + translate + delta * float3(x, y, 0);
 	    pVertex[i].n = float3(0.0, 0.0, 1.0);
-	    pVertex[i].t = float3(x, y, 0) * tdelta;
+	    pVertex[i].t = float3(x, tess.y - y, 0) * tdelta;
 	}
     }
     glGenBuffers(1, &vertexId_);
@@ -95,8 +97,8 @@ void GLPlane::tesselate(float3 tess, float3 translate, float3 scale) {
     GLVertex *pVertex = new GLVertex[(int)((tess.x + 1) * (tess.z + 1))];
     for(int z=0, i=0; z<=tess.z; z++) {
 	for(int x=0; x<=tess.x; x++, i++) {
-	    pVertex[i].p = (float3(-0.5, 0.0, -0.5) + translate + delta * float3(x, 0, z));
-	    pVertex[i].n = float3(0.0, 0.0, 1.0);
+	    pVertex[i].p = float3(-0.5, 0.0, -0.5) * scale + translate + delta * float3(x, 0, z);
+	    pVertex[i].n = float3(0.0, 1.0, 0.0);
 	    pVertex[i].t = float3(x, z, 0) * tdelta;
 	}
     }

@@ -113,13 +113,14 @@ int main(int argc, char *argv[]) {
 
     // main event loop
      while(1) {
-	    if(XPending(dpy)) { //if we have a pending xevent
+
+	    while(XPending(dpy)) { //if we have a pending xevent
 		XNextEvent(dpy, &xev);
 		if(xev.type == Expose) { // gl context resized
 			XGetWindowAttributes(dpy, win, &gwa);
 			eng.resize(gwa.width, gwa.height);
 			XWarpPointer(dpy, win, win, 0, 0, gwa.width, gwa.height, gwa.width / 2, gwa.height / 2);
-		} else if(xev.type == KeyPress ) {
+		} else if(xev.type == KeyPress) {
 		    //cout << "press: " << xev.xkey.keycode << endl;
 		    keycontroller->keyPressEvent(xev.xkey.keycode);
 		} else if(xev.type == KeyRelease) {

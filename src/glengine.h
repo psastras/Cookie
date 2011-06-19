@@ -9,6 +9,8 @@ using namespace __gnu_cxx;
 class KeyboardController;
 class GLPrimitive;
 class GLShaderProgram;
+class VSML;
+class GLFFTWater;
 
 struct WindowProperties {
     int width, height;
@@ -32,11 +34,11 @@ public:
 protected:
 
     void processKeyEvents(const KeyboardController *keycontroller, float dt);
-
+    GLFFTWater *fftwater_;
     GLPrimitive *quad0_, *quad1_, *plane0_;
     int width_, height_;
     Camera camera_;
-
+    VSML *vsml_;
     hash_map<const char*, GLShaderProgram *, hash<const char*>, eqstr> shaderPrograms_;
 };
 

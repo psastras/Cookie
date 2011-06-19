@@ -18,6 +18,10 @@ public:
     void bind() { glUseProgram(programId_); }
     void release() { glUseProgram(0); }
 
+    inline GLuint getUniformLocation(const char *name) {
+	glGetUniformLocation(programId_, name);
+    }
+
     inline void setGeometryInputType(GLenum type) {
 	glProgramParameteriEXT(programId_, GL_GEOMETRY_INPUT_TYPE_EXT, type);
     }

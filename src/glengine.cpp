@@ -4,13 +4,17 @@
 #include "glframebufferobject.h"
 #include "glprimitive.h"
 #include "glshaderprogram.h"
+#include "glfftwater.h"
 #include "keyboardcontroller.h"
+#include "../3rdparty/VSML/vsml.h"
 
 GLFramebufferObject *pMultisampleFramebuffer, *pFramebuffer;
 GLPrimitive *pQuad;
 GLEngine::GLEngine(WindowProperties &properties) {
 
     //init gl setup
+    vsml_ = VSML::getInstance();
+
     glClearColor(0.0, 0.0, 0.0, 1.0);
     //glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
@@ -20,7 +24,7 @@ GLEngine::GLEngine(WindowProperties &properties) {
     glDisable(GL_DITHER);
 
     camera_.center = float3(0.0, 0.0, 0.0);
-    camera_.eye = float3(0.0, 0.0, 1.0);
+    camera_.eye = float3(0.0, 1.0, 1.0);
     camera_.up = float3(0.0, 1.0, 0.0);
     camera_.near = 0.1;
     camera_.far = 100.0;
@@ -49,12 +53,21 @@ GLEngine::GLEngine(WindowProperties &properties) {
 			float3(1366, 768, 1));
 
     quad1_ = new GLQuad(float3(1, 1, 0),
-			float3(0.5, 0.5, 0),
+			float3(1366 * 0.5, 768 * 0.5, 0),
 			float3(1366, 768, 1));
 
-    plane0_ = new GLPlane(float3(10, 0, 10),
+    plane0_ = new GLPlane(float3(100, 0, 100),
 			 float3(0, 0, 0),
-			 float3(100, 1, 100));
+			 float3(5, 1, 5));
+
+    GLFFTWaterParams fftparams;
+    fftparams.A = 0.00225f;
+    fftparams.V = 9.0f;
+    fftparams.w = 265 * 3.14159f / 180.0f;
+    fftparams.L = 100.0;
+    fftparams.N = 256;
+
+    fftwater_ = new GLFFTWater(fftparams);
 
     //load shader programs
     shaderPrograms_["default"] = new GLShaderProgram();
@@ -79,15 +92,26 @@ void GLEngine::resize(int w, int h) {
 }
 
 void GLEngine::draw(int time, float dt, const KeyboardController *keyController) {
+
+    //compute ocean heightfield
+    float4 *data = fftwater_->computeHeightfield(time);
+    GLuint tex = fftwater_->heightfieldTexture();
+
+
+
     processKeyEvents(keyController, dt);
 
     glPolygonMode(GL_FRONT, GL_LINE);
     glEnable(GL_DEPTH_TEST);
     int w = width_, h = height_;
     camera_.perspective_camera(width_, height_);
+
     pMultisampleFramebuffer->bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     shaderPrograms_["water"]->bind();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    shaderPrograms_["water"]->setUniformValue("fftTex", 0);
     plane0_->draw();
     shaderPrograms_["water"]->release();
     pMultisampleFramebuffer->release();
@@ -99,8 +123,6 @@ void GLEngine::draw(int time, float dt, const KeyboardController *keyController)
     shaderPrograms_["default"]->bind();
     glActiveTexture(GL_TEXTURE0);
     pFramebuffer->bindsurface(0);
-    //glBindTexture(GL_TEXTURE_2D, pFramebuffer->texture()[0]);
-    //glBindTexture(GL_TEXTURE_2D, pFramebuffer->depth());
     shaderPrograms_["default"]->setUniformValue("tex", 0);
     quad1_->draw();
     pFramebuffer->unbindsurface();
@@ -121,7 +143,7 @@ void GLEngine::mouseMove(float dx, float dy, float dt) {
 }
 
 void GLEngine::processKeyEvents(const KeyboardController *keycontroller, float dt) {
-    float delta = dt*100;
+    float delta = dt*10;
     if(keycontroller->isKeyDown(25)) { //W
 	const float3 &look = (camera_.center - camera_.eye).getNormalized() * delta;
 	camera_.eye += look;

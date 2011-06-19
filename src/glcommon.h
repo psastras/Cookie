@@ -4,6 +4,7 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <GL/glu.h>
+#include "../3rdparty/VSML/vsml.h"
 #include "common.h"
 #ifdef near
 #undef near
@@ -25,6 +26,17 @@
 struct Camera {
     float3 eye, center, up;
     float fovy, near, far;
+
+
+    void perspective_camera(int w,int h, VSML *vsml) {
+	float ratio = w / static_cast<float>(h);
+	vsml->loadIdentity(VSML::PROJECTION);
+	vsml->perspective(fovy, ratio, near, far);
+	vsml->loadIdentity(VSML::MODELVIEW);
+	vsml->lookAt(eye.x, eye.y, eye.z,
+		     center.x, center.y, center.z,
+		     up.x, up.y, up.z);
+    }
 
     void perspective_camera(int w,int h) {
 	float ratio = w / static_cast<float>(h);

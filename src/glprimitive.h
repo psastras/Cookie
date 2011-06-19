@@ -18,7 +18,7 @@ class GLPrimitive {
   protected:
       GLPrimitive();
 
-      GLuint vertexId_, indexId_;
+      GLuint vertexId_, indexId_, arrayId_;
       GLenum type_;
       GLuint idxCount_;
       int vOffset_, tOffset_, nOffset_;
