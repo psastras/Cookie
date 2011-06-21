@@ -10,24 +10,26 @@ struct GLFFTWaterParams{
 	float V; //
 	float A; //global amplitude control
 	float w; //wind direction in radians
+	float chop;
 };
 
 class GLFFTWater
 {
 public:
     GLFFTWater(GLFFTWaterParams &params);
-    float4 *computeHeightfield(float t);
+    float3 *computeHeightfield(float t);
     GLuint heightfieldTexture();
+    const GLFFTWaterParams& params() { return m_params; }
 
 protected:
-    float phillips(float kx, float ky, double& w);
+    float phillips(float kx, float ky, float& w);
 
     GLFFTWaterParams m_params;
-    fftw_complex *m_htilde0, *m_htilde;
-    fftw_plan m_fftplan;
+    fftwf_complex *m_htilde0;
+    fftwf_plan m_fftplan;
     bool m_haveFFTPlan;
-    double *m_w, *m_h, *m_dx, *m_dz; //the dispersion relation
-    float4 *m_heightmap;
+    float *m_w, *m_h, *m_dx, *m_dz; //the dispersion relation
+    float3 *m_heightmap;
     GLuint m_texId;
 };
 

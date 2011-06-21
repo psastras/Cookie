@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 					  &black, &black, 0, 0);
      XDefineCursor(dpy,win, invisibleCursor);
      XFreeCursor(dpy, invisibleCursor);
-
+    float totaltime = 0.f;
     // main event loop
      while(1) {
 
@@ -149,13 +149,14 @@ int main(int argc, char *argv[]) {
 	    clock_gettime(CLOCK_REALTIME, &ts);
 	    long time = ts.tv_nsec;
 
-	    eng.draw(ts.tv_sec, dt, keycontroller);
+	    eng.draw(totaltime, dt, keycontroller);
 
 	    clock_gettime(CLOCK_REALTIME, &ts);
 	    std::stringstream ss;
 	    dt = ((ts.tv_nsec - time) * 1.0e-9);
 	    if(dt < 0) dt = 0.01; //@todo this is cause were overflowing max long i think?
 	    ss << (int)(1.0 / dt) << " fps";
+	    totaltime += dt;
 	    const char *s = ss.str().c_str();
 	    glPushAttrib(GL_LIST_BIT);
 	    glListBase(listbase - 32);

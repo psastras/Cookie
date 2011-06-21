@@ -66,27 +66,3 @@ bool GLShaderProgram::link() {
     glLinkProgram(programId_);
     return true;
 }
-
-char * GLShaderProgram::readFile(const char *path, GLint &length) {
-
-	FILE *fd;
-	long len, r;
-	char *str;
-	if (!(fd = fopen(path, "r"))) {
-		cerr << "Can't open file '%s' for reading " << path << endl;
-		return NULL;
-	}
-	fseek(fd, 0, SEEK_END);
-	len = ftell(fd);
-	length = len;
-	fseek(fd, 0, SEEK_SET);
-	if (!(str = (char *)malloc((len) * sizeof(char)))) {
-		cerr << "Can't malloc space for " << path << endl;
-		return NULL;
-	}
-	r = fread(str, sizeof(char), len, fd);
-	//str[r - 1] = '\0'; /* Shader sources have to term with null */
-	fclose(fd);
-
-	return str;
-}

@@ -1,8 +1,11 @@
 Project still work in progress.
 
-Written for GNU Linux installation with X.
+Most of the required dependencies should be already installed in a standard GNU Linux distro.
+FFTW (the DFT library) may be downloaded and installed here:
+    http://www.fftw.org/
 
 Dependencies:
     libgl
     libglu
     libX11
+    libfftw

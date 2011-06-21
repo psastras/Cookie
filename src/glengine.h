@@ -28,7 +28,7 @@ public:
     GLEngine(WindowProperties &properties);
     ~GLEngine();
     void resize(int w, int h);
-    void draw(int time, float dt, const KeyboardController *keycontroller); //time in s, dt in fraction of sec
+    void draw(float time, float dt, const KeyboardController *keycontroller); //time in s, dt in fraction of sec
     void mouseMove(float dx, float dy, float dt);
 
 protected:

@@ -16,7 +16,7 @@ GLEngine::GLEngine(WindowProperties &properties) {
     vsml_ = VSML::getInstance();
 
     glClearColor(0.0, 0.0, 0.0, 1.0);
-    //glEnable(GL_TEXTURE_2D);
+    glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -41,7 +41,7 @@ GLEngine::GLEngine(WindowProperties &properties) {
 
     pMultisampleFramebuffer = new GLFramebufferObject(params);
 
-    params.hasDepth = true;
+    params.hasDepth = false;
     params.nSamples = 0;
     params.format = GL_RGBA;
 
@@ -56,17 +56,17 @@ GLEngine::GLEngine(WindowProperties &properties) {
 			float3(1366 * 0.5, 768 * 0.5, 0),
 			float3(1366, 768, 1));
 
-    plane0_ = new GLPlane(float3(100, 0, 100),
+    plane0_ = new GLPlane(float3(200, 0, 200),
 			 float3(0, 0, 0),
-			 float3(5, 1, 5));
+			 float3(20, 1, 20));
 
     GLFFTWaterParams fftparams;
-    fftparams.A = 0.00225f;
-    fftparams.V = 9.0f;
-    fftparams.w = 265 * 3.14159f / 180.0f;
+    fftparams.A = 0.0000005f;
+    fftparams.V = 20.0f;
+    fftparams.w = 260 * 3.14159f / 180.0f;
     fftparams.L = 100.0;
     fftparams.N = 256;
-
+    fftparams.chop = 2.5;
     fftwater_ = new GLFFTWater(fftparams);
 
     //load shader programs
@@ -91,17 +91,15 @@ void GLEngine::resize(int w, int h) {
     glViewport(0, 0, w, h);
 }
 
-void GLEngine::draw(int time, float dt, const KeyboardController *keyController) {
+void GLEngine::draw(float time, float dt, const KeyboardController *keyController) {
 
     //compute ocean heightfield
-    float4 *data = fftwater_->computeHeightfield(time);
+    float3 *data = fftwater_->computeHeightfield(time*2);
     GLuint tex = fftwater_->heightfieldTexture();
-
-
 
     processKeyEvents(keyController, dt);
 
-    glPolygonMode(GL_FRONT, GL_LINE);
+ //   glPolygonMode(GL_FRONT, GL_LINE);
     glEnable(GL_DEPTH_TEST);
     int w = width_, h = height_;
     camera_.perspective_camera(width_, height_);
@@ -112,6 +110,10 @@ void GLEngine::draw(int time, float dt, const KeyboardController *keyController)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
     shaderPrograms_["water"]->setUniformValue("fftTex", 0);
+    shaderPrograms_["water"]->setUniformValue("N", (float)(fftwater_->params().N));
+    shaderPrograms_["water"]->setUniformValue("L", (float)(fftwater_->params().L));
+    shaderPrograms_["water"]->setUniformValue("eyePos", camera_.eye);
+    shaderPrograms_["water"]->setUniformValue("sunPos", float3(0.0, 1.0, 0.0));
     plane0_->draw();
     shaderPrograms_["water"]->release();
     pMultisampleFramebuffer->release();
@@ -119,7 +121,7 @@ void GLEngine::draw(int time, float dt, const KeyboardController *keyController)
 
     glDisable(GL_DEPTH_TEST);
     camera_.orthogonal_camera(width_, height_);
-    glPolygonMode(GL_FRONT, GL_FILL);
+  //  glPolygonMode(GL_FRONT, GL_FILL);
     shaderPrograms_["default"]->bind();
     glActiveTexture(GL_TEXTURE0);
     pFramebuffer->bindsurface(0);
