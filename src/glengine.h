@@ -2,7 +2,7 @@
 #define GLENGINE_H
 
 #include "glcommon.h"
-#include <hash_map>
+#include <unordered_map>
 #include <cstring>
 using namespace std;
 using namespace __gnu_cxx;
@@ -22,17 +22,28 @@ struct eqstr{
   }
 };
 
+
+
 class GLEngine
 {
 public:
     GLEngine(WindowProperties &properties);
     ~GLEngine();
+
+    enum RenderMode {
+	WIREFRAME, FILL
+    };
+
+
     void resize(int w, int h);
     void draw(float time, float dt, const KeyboardController *keycontroller); //time in s, dt in fraction of sec
     void mouseMove(float dx, float dy, float dt);
 
     int width() { return width_; }
     int height() { return height_; }
+
+    void setRenderMode(RenderMode mode) { renderMode_ = mode; }
+
 
 protected:
 
@@ -42,7 +53,10 @@ protected:
     int width_, height_;
     Camera camera_;
     VSML *vsml_;
-    hash_map<const char*, GLShaderProgram *, hash<const char*>, eqstr> shaderPrograms_;
+    unordered_map<const char*, GLShaderProgram *, hash<const char*>, eqstr> shaderPrograms_;
+
+    RenderMode renderMode_;
 };
+
 
 #endif // GLENGINE_H

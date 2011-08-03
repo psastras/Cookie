@@ -39,7 +39,7 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	return 0;
     case WM_SIZE:
 	glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
-	std::cout << "(w , h) : " << LOWORD(lParam) << " x " << HIWORD(lParam) << std::endl;
+	//std::cout << "(w , h) : " << LOWORD(lParam) << " x " << HIWORD(lParam) << std::endl;
         return 0;
     case WM_KEYUP:
 	pKeyController->keyReleaseEvent(wParam);
@@ -151,18 +151,40 @@ int main(int argc, char *argv[]) {
     HWND  hWnd;				/* window */
     MSG   msg;				/* message */
 
-    hWnd = CreateOpenGLWindow("OpenGL Water Demo [2011 - psastras]", 100, 100, 1366, 768, PFD_TYPE_RGBA, 0);
+    char *windowName = (char *)"OpenGL Water Demo [2011 - psastras]";
+    hWnd = CreateOpenGLWindow(windowName, 100, 100, 1366, 768, PFD_TYPE_RGBA, 0);
     if (hWnd == NULL) exit(1);
 
     hDC = GetDC(hWnd);
-    hRC = wglCreateContext(hDC);
+    int attributes[] = {
+	    WGL_CONTEXT_MAJOR_VERSION_ARB, 3, // Set the MAJOR version of OpenGL to 3
+	    WGL_CONTEXT_MINOR_VERSION_ARB, 2, // Set the MINOR version of OpenGL to 2
+	    WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB, // Set our OpenGL context to be forward compatible
+	    0
+    };
+    hRC = wglCreateContext(hDC);//wglCreateContextAttribsARB(hDC, NULL, attributes);
+
     wglMakeCurrent(hDC, hRC);
     glewInit();
-    wglUseFontBitmaps(hDC, 0, 256, 1000);
+    HFONT font = CreateFont(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,ANSI_CHARSET,OUT_TT_ONLY_PRECIS,
+		      CLIP_DEFAULT_PRECIS, ANTIALIASED_QUALITY, FF_DONTCARE|DEFAULT_PITCH,
+		      "Calibri");
+    (HFONT)SelectObject(hDC, font);
+    GLint base = glGenLists(256);
+    wglUseFontBitmaps(hDC, 0, 256, base);
     pEngine = new GLEngine(properties);
     ShowWindow(hWnd, 1);
     SetFocus(hWnd);
     float dt = 0.f;
+    ShowCursor(false);
+
+    const GLubyte *glVersionString = glGetString(GL_VERSION); // Get the version of OpenGL we are using
+    int glVersion[2] = {-1, -1}; // Set some default values for the version
+    glGetIntegerv(GL_MAJOR_VERSION, &glVersion[0]); // Get back the OpenGL MAJOR version we are using
+    glGetIntegerv(GL_MINOR_VERSION, &glVersion[1]); // Get back the OpenGL MAJOR version we are using
+
+    std::cout << "Using OpenGL: " << glVersion[0] << "." << glVersion[1] << std::endl; // Output which version of OpenGL we are using
+
     while (1) {
 	while(PeekMessage(&msg, hWnd, 0, 0, PM_NOREMOVE)) {
 	    if(GetMessage(&msg, hWnd, 0, 0)) {
@@ -174,6 +196,7 @@ int main(int argc, char *argv[]) {
 	}
 	SYSTEMTIME st;
 	GetSystemTime(&st);
+
 
 	POINT pt;
 	pt.x = pEngine->width() / 2;
@@ -194,7 +217,7 @@ int main(int argc, char *argv[]) {
 	const char *s = ss.str().c_str();
 	glPushAttrib(GL_LIST_BIT);
 	glRasterPos2f(10.f, 20.f);
-	glListBase(1000);
+	glListBase(base);
 	glCallLists(ss.str().length(), GL_UNSIGNED_BYTE, s);
 	glListBase(0);
 	glPopAttrib();
@@ -208,6 +231,7 @@ int main(int argc, char *argv[]) {
 	pKeyController->swapBuffers();
     }
 quit:
+    glDeleteLists(base, 256);
     wglMakeCurrent(NULL, NULL);
     ReleaseDC(hWnd, hDC);
     wglDeleteContext(hRC);

@@ -4,6 +4,7 @@
 #include <windows.h>
 #endif
 #include <GL/glew.h>
+#include <GL/wglew.h>
 #include "common.h"
 #ifdef near
 #undef near
@@ -28,6 +29,7 @@ struct Camera {
     float rotx, roty;
 
     void perspective_camera(int w,int h) {
+
 	float ratio = w / static_cast<float>(h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();

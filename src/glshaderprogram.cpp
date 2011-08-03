@@ -63,6 +63,9 @@ void GLShaderProgram::loadShaderFromSource(GLenum type, std::string source) {
 
 
 bool GLShaderProgram::link() {
+  //  glBindAttribLocation(programId_, 0, "in_Position"); // Bind a constant attribute location for positions of vertices
+//    glBindAttribLocation(programId_, 1, "in_Normal"); // Bind another constant attribute location, this time for color
+//    glBindAttribLocation(programId_, 2, "in_TexCoord"); // Bind another constant attribute location, this time for color
     glLinkProgram(programId_);
     return true;
 }

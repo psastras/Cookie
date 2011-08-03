@@ -166,6 +166,9 @@ struct float2 {
 	};
 	float data[2];
     };
+
+    float2(float v0 = 0, float v1 = 0) : x(v0), y(v1){ }
+    float2(float *data) { x = data[0]; y = data[1]; }
 };
 
 #endif

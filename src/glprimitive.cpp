@@ -1,18 +1,63 @@
 #include "glprimitive.h"
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
-GLPrimitive::GLPrimitive() : vertexId_(0), indexId_(0) {
+GLPrimitive::GLPrimitive() : vertexId_(0), indexId_(0), arrayId_(0) {
 
 }
 
 GLPrimitive::~GLPrimitive() {
     glDeleteBuffers(1, &vertexId_);
     glDeleteBuffers(1, &indexId_);
+    glDeleteVertexArrays(1, &arrayId_);
+}
+
+void GLPrimitive::draw(GLShaderProgram *program, int instances) {
+    glBindBuffer(GL_ARRAY_BUFFER, vertexId_);
+    glVertexAttribPointer(program->getAttributeLocation("in_Position"), 3,
+			  GL_FLOAT, GL_FALSE, sizeof(GLVertex), (GLvoid *)0);
+    glVertexAttribPointer(program->getAttributeLocation("in_Normal"), 3,
+			  GL_FLOAT, GL_FALSE, sizeof(GLVertex), (GLvoid *)12);
+    glVertexAttribPointer(program->getAttributeLocation("in_TexCoord"), 3,
+			  GL_FLOAT, GL_FALSE, sizeof(GLVertex), (GLvoid *)24);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    glEnableVertexAttribArray(program->getAttributeLocation("in_Position"));
+    glEnableVertexAttribArray(program->getAttributeLocation("in_Normal"));
+    glEnableVertexAttribArray(program->getAttributeLocation("in_TexCoord"));
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexId_);
+    glDrawElementsInstanced(type_, idxCount_, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0), instances);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glDisableVertexAttribArray(program->getAttributeLocation("in_Position"));
+    glDisableVertexAttribArray(program->getAttributeLocation("in_Normal"));
+    glDisableVertexAttribArray(program->getAttributeLocation("in_TexCoord"));
+}
+
+void GLPrimitive::draw(GLShaderProgram *program) {
+    glBindBuffer(GL_ARRAY_BUFFER, vertexId_);
+    glVertexAttribPointer(program->getAttributeLocation("in_Position"), 3,
+			  GL_FLOAT, GL_FALSE, sizeof(GLVertex), (GLvoid *)0);
+    glVertexAttribPointer(program->getAttributeLocation("in_Normal"), 3,
+			  GL_FLOAT, GL_FALSE, sizeof(GLVertex), (GLvoid *)12);
+    glVertexAttribPointer(program->getAttributeLocation("in_TexCoord"), 3,
+			  GL_FLOAT, GL_FALSE, sizeof(GLVertex), (GLvoid *)24);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    glEnableVertexAttribArray(program->getAttributeLocation("in_Position"));
+    glEnableVertexAttribArray(program->getAttributeLocation("in_Normal"));
+    glEnableVertexAttribArray(program->getAttributeLocation("in_TexCoord"));
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexId_);
+    glDrawElements(type_, idxCount_, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glDisableVertexAttribArray(program->getAttributeLocation("in_Position"));
+    glDisableVertexAttribArray(program->getAttributeLocation("in_Normal"));
+    glDisableVertexAttribArray(program->getAttributeLocation("in_TexCoord"));
 }
 
 void GLPrimitive::draw() {
-
-
      glBindBuffer(GL_ARRAY_BUFFER, vertexId_);
      glEnableClientState(GL_VERTEX_ARRAY);
      glVertexPointer(3, GL_FLOAT, sizeof(GLVertex), BUFFER_OFFSET(vOffset_));   //The starting point of the VBO, for the vertices
@@ -28,6 +73,7 @@ void GLPrimitive::draw() {
      glDisableClientState(GL_VERTEX_ARRAY);
      glBindBuffer(GL_ARRAY_BUFFER, 0);
      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
 }
 
 GLQuad::GLQuad(float3 tess, float3 translate, float3 scale) {
@@ -39,12 +85,21 @@ void GLQuad::tesselate(float3 tess, float3 translate, float3 scale) {
 
     if(vertexId_) glDeleteBuffers(1, &vertexId_);
     if(indexId_) glDeleteBuffers(1, &indexId_);
+    if(arrayId_) glDeleteVertexArrays(1, &arrayId_);
+
 
     type_ = GL_QUADS;
     idxCount_ = 4 * tess.x * tess.y;
     float3 delta = scale / tess;
     float3 tdelta = 1.0 / tess;
     delta.z = 0;
+
+    glGenVertexArrays(1, &arrayId_);
+    glBindVertexArray(arrayId_);
+
+
+
+
     GLVertex *pVertex = new GLVertex[(int)((tess.x + 1) * (tess.y + 1))];
     for(int y=0, i=0; y<=tess.y; y++) {
 	for(int x=0; x<=tess.x; x++, i++) {
@@ -72,6 +127,7 @@ void GLQuad::tesselate(float3 tess, float3 translate, float3 scale) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexId_);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short)*idxCount_, &pIndices[0], GL_STATIC_DRAW);
 
+    glBindVertexArray(0);
     delete[] pVertex, delete[] pIndices;
 
     //byte offsets in the vertex struct...this may as well be hard coded for now.

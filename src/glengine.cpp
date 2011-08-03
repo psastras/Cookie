@@ -12,13 +12,15 @@ GLFramebufferObject *pMultisampleFramebuffer, *pFramebuffer;
 GLPrimitive *pQuad;
 GLEngine::GLEngine(WindowProperties &properties) {
 
+    renderMode_ = FILL;
+
     //init gl setup
     vsml_ = VSML::getInstance();
     width_ = properties.width;
     height_ = properties.height;
 
 
-    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glClearColor(0.2, 0.4, 0.5, 1.0);
     glViewport(0,0,width_,height_);
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
@@ -61,17 +63,17 @@ GLEngine::GLEngine(WindowProperties &properties) {
 			float3(width_ * 0.5, height_ * 0.5, 0),
 			float3(width_, height_, 1));
 
-    plane0_ = new GLPlane(float3(200, 0, 200),
+    plane0_ = new GLPlane(float3(250, 0, 250),
 			 float3(0, 0, 0),
 			 float3(20, 1, 20));
 
     GLFFTWaterParams fftparams;
-    fftparams.A = 0.00000005f;
+    fftparams.A = 0.000000035f;
     fftparams.V = 20.0f;
     fftparams.w = 260 * 3.14159f / 180.0f;
     fftparams.L = 200.0;
     fftparams.N = 256;
-    fftparams.chop = 1.0;
+    fftparams.chop = 2.5;
     fftwater_ = new GLFFTWater(fftparams);
 
     //load shader programs
@@ -84,6 +86,8 @@ GLEngine::GLEngine(WindowProperties &properties) {
     shaderPrograms_["water"]->loadShaderFromSource(GL_VERTEX_SHADER, "shaders/water.glsl");
     shaderPrograms_["water"]->loadShaderFromSource(GL_FRAGMENT_SHADER, "shaders/water.glsl");
     shaderPrograms_["water"]->link();
+
+
 }
 
 
@@ -94,6 +98,7 @@ GLEngine::~GLEngine() {
 void GLEngine::resize(int w, int h) {
     width_ = w; height_ = h;
     glViewport(0, 0, w, h);
+
 }
 
 void GLEngine::draw(float time, float dt, const KeyboardController *keyController) {
@@ -106,43 +111,62 @@ void GLEngine::draw(float time, float dt, const KeyboardController *keyControlle
 
     processKeyEvents(keyController, dt);
 
- //   glPolygonMode(GL_FRONT, GL_LINE);
+    if(renderMode_ == WIREFRAME) glPolygonMode(GL_FRONT, GL_LINE);
     glEnable(GL_DEPTH_TEST);
     int w = width_, h = height_;
-    camera_.perspective_camera(width_, height_);
+    vsml_->perspective(camera_.fovy, w / (float)h, camera_.near, camera_.far);
+    vsml_->loadIdentity(VSML::MODELVIEW);
+    vsml_->rotate(camera_.rotx, 1.f, 0.f, 0.f);
+    vsml_->rotate(camera_.roty, 0.f, 1.f, 0.f);
+    vsml_->translate(-camera_.eye.x, -camera_.eye.y, -camera_.eye.z);
 
     pMultisampleFramebuffer->bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     shaderPrograms_["water"]->bind();
+    vsml_->initUniformLocs(shaderPrograms_["water"]->getUniformLocation("modelviewMatrix"),
+			   shaderPrograms_["water"]->getUniformLocation("projMatrix"));
+    vsml_->matrixToUniform(VSML::MODELVIEW);
+    vsml_->matrixToUniform(VSML::PROJECTION);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
+
     shaderPrograms_["water"]->setUniformValue("fftTex", 0);
     shaderPrograms_["water"]->setUniformValue("N", (float)(fftwater_->params().N));
     shaderPrograms_["water"]->setUniformValue("L", (float)(fftwater_->params().L));
+    shaderPrograms_["water"]->setUniformValue("D", 20.f);
+    shaderPrograms_["water"]->setUniformValue("grid", float2(5.f, 5.f));
     shaderPrograms_["water"]->setUniformValue("eyePos", camera_.eye);
     shaderPrograms_["water"]->setUniformValue("sunPos", float3(0.0, 1.0, 0.0));
-    plane0_->draw();
+    plane0_->draw(shaderPrograms_["water"], 25);
     shaderPrograms_["water"]->release();
     pMultisampleFramebuffer->release();
     pMultisampleFramebuffer->blit(*pFramebuffer);
 
     glDisable(GL_DEPTH_TEST);
-    camera_.orthogonal_camera(width_, height_);
-  //  glPolygonMode(GL_FRONT, GL_FILL);
+    if(renderMode_ == WIREFRAME) glPolygonMode(GL_FRONT, GL_FILL);
+    vsml_->loadIdentity(VSML::PROJECTION);
+    vsml_->ortho(0.f,(float)width_,(float)height_,0.f);
+    vsml_->loadIdentity(VSML::MODELVIEW);
+
     shaderPrograms_["default"]->bind();
+    vsml_->initUniformLocs(shaderPrograms_["default"]->getUniformLocation("modelviewMatrix"),
+			   shaderPrograms_["default"]->getUniformLocation("projMatrix"));
+    vsml_->matrixToUniform(VSML::MODELVIEW);
+    vsml_->matrixToUniform(VSML::PROJECTION);
     glActiveTexture(GL_TEXTURE0);
     pFramebuffer->bindsurface(0);
     shaderPrograms_["default"]->setUniformValue("tex", 0);
-    quad1_->draw();
+    quad1_->draw(shaderPrograms_["default"]);
     pFramebuffer->unbindsurface();
     shaderPrograms_["default"]->release();
 
+    camera_.orthogonal_camera(w, h);
 }
 
-
+float sensitivity = 50.f;
 void GLEngine::mouseMove(float dx, float dy, float dt) {
-    float deltax = -dx*dt*10.f;
-    float deltay = -dy*dt*10.f;
+    float deltax = -dx*dt*sensitivity;
+    float deltay = -dy*dt*sensitivity;
     camera_.roty -= deltax;
     camera_.rotx += deltay;
 }
@@ -155,6 +179,8 @@ void GLEngine::processKeyEvents(const KeyboardController *keycontroller, float d
 #define KEY_S 83
 #define KEY_D 68
 #define KEY_SPACE 32
+#define KEY_1 49
+#define KEY_2 50
 #else
 #define KEY_W 25
 #define KEY_A 38
@@ -163,7 +189,7 @@ void GLEngine::processKeyEvents(const KeyboardController *keycontroller, float d
 #define KEY_SPACE 65
 #endif
 
-    float delta = dt*10.f;
+    float delta = dt*sensitivity;
     if(keycontroller->isKeyDown(KEY_W)) { //W
 	float yrotrad = camera_.roty / 180 * 3.141592654f;
 	float xrotrad = camera_.rotx / 180 * 3.141592654f;
@@ -186,5 +212,9 @@ void GLEngine::processKeyEvents(const KeyboardController *keycontroller, float d
 	camera_.eye.z += sinf(yrotrad)*delta;
     } if(keycontroller->isKeyDown(KEY_SPACE)) { //space
 	camera_.eye.y += delta;
+    } if(keycontroller->isKeyPress(KEY_1)) {
+	this->setRenderMode(FILL);
+    } if(keycontroller->isKeyPress(KEY_2)) {
+	this->setRenderMode(WIREFRAME);
     }
 }

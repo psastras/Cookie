@@ -1,7 +1,7 @@
 #include "glfftwater.h"
 #include <tr1/random>
 #include <malloc.h>
-
+#include <math.h>
 GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
 
 #ifdef _WIN32
@@ -27,11 +27,11 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
     std::tr1::variate_generator<std::tr1::mt19937, std::tr1::normal_distribution<float> > randn(prng,normal);
     std::tr1::variate_generator<std::tr1::mt19937, std::tr1::uniform_real<float> > randu(prng,uniform);
     for(int i=0, k=0; i<params.N; i++) {
-	    float k_x = (-(params.N-1)*0.5f+i)*(2.f*M_PI / params.L);
+	    float k_x = (-(params.N-1)*0.5f+i)*(2.f*3.141592654f / params.L);
 	    for(int j=0; j<params.N; j++, k++) {
-		    float k_y = (-(params.N-1)*0.5f+j)*(2.f*M_PI / params.L);
+		    float k_y = (-(params.N-1)*0.5f+j)*(2.f*3.141592654f / params.L);
 		    float A = randn();
-		    float theta = randu() * 2.f * M_PI;
+		    float theta = randu() * 2.f * 3.141592654f;
 		    float P = (k_x==0.f && k_y==0.0f) ? 0.f : sqrtf(phillips(k_x,k_y,m_w[k]));
 		    m_htilde0[k][0] = m_htilde0[k][1] = P*A*sinf(theta);
 	    }
@@ -54,7 +54,7 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
 }
 
 float GLFFTWater::phillips(float kx, float ky, float& w) {
-	const float damping = 1.f / 1.f;
+	const float damping = 1.f / 20.f;
 	float kk = kx*kx+ky*ky;
 	float kw = kx*cosf(m_params.w)+ky*sinf(m_params.w);
 	float l = m_params.V*m_params.V /  9.81;

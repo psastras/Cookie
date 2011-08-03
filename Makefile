@@ -3,9 +3,9 @@
 CC = g++
 
 ifeq ($(BUILD_TYPE), debug)
-    CFLAGS = -Wall -g
+    CFLAGS = -Wall -g -std=c++0x
 else
-    CFLAGS = -O3 -msse2 -ffast-math -fno-signed-zeros -fno-trapping-math
+    CFLAGS = -O3 -msse2 -ffast-math -fno-signed-zeros -fno-trapping-math -std=c++0x
 endif
 
 
