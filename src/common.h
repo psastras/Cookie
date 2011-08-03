@@ -168,6 +168,4 @@ struct float2 {
     };
 };
 
-
-
 #endif

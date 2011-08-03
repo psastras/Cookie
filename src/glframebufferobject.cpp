@@ -25,7 +25,7 @@ GLFramebufferObject::~GLFramebufferObject() {
 	glDeleteTextures(params_.nColorAttachments, &color_[0]);
 	glDeleteTextures(1, &depth_);
     }
-    glDeleteFramebuffers(1, &id_);
+    glDeleteFramebuffersEXT(1, &id_);
     this->release();
 
     delete[] color_;
@@ -35,12 +35,13 @@ GLFramebufferObject::~GLFramebufferObject() {
 // @todo: add stencil buffer support and error handling (esp. for nonsupported formats)
 void GLFramebufferObject::allocFramebuffer(GLFramebufferObjectParams &params) {
     glGenFramebuffersEXT(1, &id_);
+
     this->bind();
     color_ = new GLuint[params.nColorAttachments];
 
     if(params.nSamples > 0) { //create multisample targets
 	GLint maxSamples = 0;
-	glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
+        glGetIntegerv(GL_MAX_SAMPLES_EXT, &maxSamples);
 	if(params.nSamples > maxSamples) {
 	    cerr << "Warning: maximum number of samples supported is " << maxSamples << " but requested number of samples is " <<
 		    params.nSamples << ".  Falling back to " << maxSamples << " samples." << endl;
@@ -48,7 +49,7 @@ void GLFramebufferObject::allocFramebuffer(GLFramebufferObjectParams &params) {
 	}
 	glGenRenderbuffersEXT(params.nColorAttachments, &color_[0]);
 	for(int i=0; i<params.nColorAttachments; i++) {
-	    glBindRenderbuffer(GL_RENDERBUFFER_EXT, color_[i]);
+            glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, color_[i]);
 	    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, params.nSamples, params.format, params.width, params.height);
 	    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT + i, GL_RENDERBUFFER_EXT, color_[i]);
 	}
@@ -105,7 +106,7 @@ void GLFramebufferObject::blit(GLFramebufferObject &dst) {
 	glReadBuffer(GL_COLOR_ATTACHMENT0_EXT + i);
 	glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, dst.id());
 	glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT + i);
-	glBlitFramebuffer(0, 0, this->width(), this->height(), 0, 0, dst.width(), dst.height(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        glBlitFramebufferEXT(0, 0, this->width(), this->height(), 0, 0, dst.width(), dst.height(), GL_COLOR_BUFFER_BIT, GL_NEAREST);
     }
 
     if(this->params().hasDepth && dst.params().hasDepth) {
@@ -113,7 +114,7 @@ void GLFramebufferObject::blit(GLFramebufferObject &dst) {
 	glReadBuffer(GL_DEPTH_ATTACHMENT_EXT);
 	glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, dst.id());
 	glDrawBuffer(GL_DEPTH_ATTACHMENT_EXT);
-	glBlitFramebuffer(0, 0, this->width(), this->height(), 0, 0, dst.width(), dst.height(), GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+        glBlitFramebufferEXT(0, 0, this->width(), this->height(), 0, 0, dst.width(), dst.height(), GL_DEPTH_BUFFER_BIT, GL_NEAREST);
     }
 
     glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, 0);

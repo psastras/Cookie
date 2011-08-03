@@ -9,6 +9,8 @@ using namespace __gnu_cxx;
 class KeyboardController;
 class GLPrimitive;
 class GLShaderProgram;
+class VSML;
+class GLFFTWater;
 
 struct WindowProperties {
     int width, height;
@@ -26,17 +28,20 @@ public:
     GLEngine(WindowProperties &properties);
     ~GLEngine();
     void resize(int w, int h);
-    void draw(int time, float dt, const KeyboardController *keycontroller); //time in s, dt in fraction of sec
+    void draw(float time, float dt, const KeyboardController *keycontroller); //time in s, dt in fraction of sec
     void mouseMove(float dx, float dy, float dt);
+
+    int width() { return width_; }
+    int height() { return height_; }
 
 protected:
 
     void processKeyEvents(const KeyboardController *keycontroller, float dt);
-
+    GLFFTWater *fftwater_;
     GLPrimitive *quad0_, *quad1_, *plane0_;
     int width_, height_;
     Camera camera_;
-
+    VSML *vsml_;
     hash_map<const char*, GLShaderProgram *, hash<const char*>, eqstr> shaderPrograms_;
 };
 

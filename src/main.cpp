@@ -1,21 +1,221 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <X11/X.h>
-#include <X11/keysym.h>
-#include <X11/keysymdef.h>
-#include <X11/Xlib.h>
-#include <X11/cursorfont.h>
-#include <X11/Xutil.h>
+#include <time.h>
 #include <sys/time.h>
 #include "glcommon.h"
 #include "glengine.h"
-#include <GL/glx.h>
-#include <sys/resource.h>
 #include <string.h>
 #include <sstream>
+#include <iostream>
 #include "common.h"
 #include "keyboardcontroller.h"
 
+#ifdef _WIN32
+
+#else
+    #include <X11/X.h>
+    #include <X11/keysym.h>
+    #include <X11/keysymdef.h>
+    #include <X11/Xlib.h>
+    #include <X11/cursorfont.h>
+    #include <X11/Xutil.h>
+    #include <GL/glx.h>
+    #include <sys/resource.h>
+#endif
+
+GLEngine *pEngine = 0;
+KeyboardController *pKeyController = new KeyboardController();
+#ifdef _WIN32
+
+LONG WINAPI
+WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    static PAINTSTRUCT ps;
+    switch(uMsg) {
+    case WM_PAINT:
+        BeginPaint(hWnd, &ps);
+        EndPaint(hWnd, &ps);
+        return 0;
+    case WM_MOUSEMOVE:
+	return 0;
+    case WM_SIZE:
+	glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+	std::cout << "(w , h) : " << LOWORD(lParam) << " x " << HIWORD(lParam) << std::endl;
+        return 0;
+    case WM_KEYUP:
+	pKeyController->keyReleaseEvent(wParam);
+	return 0;
+    case WM_KEYDOWN:
+	pKeyController->keyPressEvent(wParam);
+	//std::cout << "key press: " << wParam << std::endl;
+	return 0;
+    }
+
+    return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
+
+HWND CreateOpenGLWindow(char* title, int x, int y, int width, int height,
+                   BYTE type, DWORD flags) {
+
+
+    int         pf;
+    HDC         hDC;
+    HWND        hWnd;
+    WNDCLASS    wc;
+    PIXELFORMATDESCRIPTOR pfd;
+    static HINSTANCE hInstance = 0;
+
+    /* only register the window class once - use hInstance as a flag. */
+    if (!hInstance) {
+        hInstance = GetModuleHandle(NULL);
+        wc.style         = CS_OWNDC;
+        wc.lpfnWndProc   = (WNDPROC)WindowProc;
+        wc.cbClsExtra    = 0;
+        wc.cbWndExtra    = 0;
+        wc.hInstance     = hInstance;
+        wc.hIcon         = LoadIcon(NULL, IDI_WINLOGO);
+        wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+        wc.hbrBackground = NULL;
+        wc.lpszMenuName  = NULL;
+	wc.lpszClassName = "OpenGL";
+
+        if (!RegisterClass(&wc)) {
+            MessageBox(NULL, "RegisterClass() failed:  "
+                       "Cannot register window class.", "Error", MB_OK);
+            return NULL;
+        }
+    }
+
+    hWnd = CreateWindow("OpenGL", title, WS_OVERLAPPEDWINDOW |
+                        WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+                        x, y, width, height, NULL, NULL, hInstance, NULL);
+
+    if (hWnd == NULL) {
+        MessageBox(NULL, "CreateWindow() failed:  Cannot create a window.",
+                   "Error", MB_OK);
+        return NULL;
+    }
+
+    hDC = GetDC(hWnd);
+
+    /* there is no guarantee that the contents of the stack that become
+       the pfd are zeroed, therefore _make sure_ to clear these bits. */
+    memset(&pfd, 0, sizeof(pfd));
+    pfd.nSize        = sizeof(pfd);
+    pfd.nVersion     = 1;
+    pfd.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | flags;
+    pfd.iPixelType   = type;
+    pfd.cColorBits   = 32;
+
+    pf = ChoosePixelFormat(hDC, &pfd);
+    if (pf == 0) {
+        MessageBox(NULL, "ChoosePixelFormat() failed:  "
+                   "Cannot find a suitable pixel format.", "Error", MB_OK);
+        return 0;
+    }
+
+    if (SetPixelFormat(hDC, pf, &pfd) == FALSE) {
+        MessageBox(NULL, "SetPixelFormat() failed:  "
+                   "Cannot set format specified.", "Error", MB_OK);
+        return 0;
+    }
+
+    DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
+
+    ReleaseDC(hWnd, hDC);
+
+    return hWnd;
+}
+
+double PCFreq = 0.0;
+__int64 CounterStart = 0;
+
+void StartCounter() {
+    LARGE_INTEGER li;
+    if(!QueryPerformanceFrequency(&li))
+	std::cout << "QueryPerformanceFrequency failed!\n";
+    PCFreq = double(li.QuadPart)/1000.0;
+    QueryPerformanceCounter(&li);
+    CounterStart = li.QuadPart;
+}
+
+double GetCounter() {
+    LARGE_INTEGER li;
+    QueryPerformanceCounter(&li);
+    return double(li.QuadPart-CounterStart)/PCFreq;
+}
+
+int main(int argc, char *argv[]) {
+    WindowProperties properties = {1366, 768};
+    HDC hDC;				/* device context */
+    HGLRC hRC;				/* opengl context */
+    HWND  hWnd;				/* window */
+    MSG   msg;				/* message */
+
+    hWnd = CreateOpenGLWindow("OpenGL Water Demo [2011 - psastras]", 100, 100, 1366, 768, PFD_TYPE_RGBA, 0);
+    if (hWnd == NULL) exit(1);
+
+    hDC = GetDC(hWnd);
+    hRC = wglCreateContext(hDC);
+    wglMakeCurrent(hDC, hRC);
+    glewInit();
+    wglUseFontBitmaps(hDC, 0, 256, 1000);
+    pEngine = new GLEngine(properties);
+    ShowWindow(hWnd, 1);
+    SetFocus(hWnd);
+    float dt = 0.f;
+    while (1) {
+	while(PeekMessage(&msg, hWnd, 0, 0, PM_NOREMOVE)) {
+	    if(GetMessage(&msg, hWnd, 0, 0)) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	    } else {
+		goto quit;
+	    }
+	}
+	SYSTEMTIME st;
+	GetSystemTime(&st);
+
+	POINT pt;
+	pt.x = pEngine->width() / 2;
+	pt.y = pEngine->height() / 2;
+	POINT lpt;
+	GetCursorPos(&lpt);
+	ClientToScreen(hWnd, &pt);
+	SetCursorPos(pt.x, pt.y);
+	pEngine->mouseMove(lpt.x - pt.x, pt.y - lpt.y, dt / 1000.f);
+
+	StartCounter();
+	pEngine->draw(st.wMinute * 60 + st.wSecond + st.wMilliseconds / 1000.f, dt / 1000.f, pKeyController);
+	dt = GetCounter();
+
+	std::stringstream ss;
+	if(dt < 0) dt = 0.01; //@todo this is cause were overflowing max long i think?
+	ss << (int)(1000.0 / dt) << " fps";
+	const char *s = ss.str().c_str();
+	glPushAttrib(GL_LIST_BIT);
+	glRasterPos2f(10.f, 20.f);
+	glListBase(1000);
+	glCallLists(ss.str().length(), GL_UNSIGNED_BYTE, s);
+	glListBase(0);
+	glPopAttrib();
+	glFinish();
+
+
+	if(pKeyController->isKeyDown(27)) { //esc
+	    break;
+	}
+
+	pKeyController->swapBuffers();
+    }
+quit:
+    wglMakeCurrent(NULL, NULL);
+    ReleaseDC(hWnd, hDC);
+    wglDeleteContext(hRC);
+    DestroyWindow(hWnd);
+
+    return msg.wParam;
+}
+#else
 bool checkGLXExtension(const char* extName, Display *dpy, int screen) {
   /*
     Search for extName in the extensions string.  Use of strstr()
@@ -50,7 +250,7 @@ int main(int argc, char *argv[]) {
     ret = setpriority(which, pid, priority);
 
      Display *dpy = XOpenDisplay(NULL);
-     KeyboardController *keycontroller = new KeyboardController();
+
      if(dpy == NULL) {
 	    cerr << "Cannot connect to X server.  (Are you running a window system?)" << endl;
 	    exit(1);
@@ -78,7 +278,6 @@ int main(int argc, char *argv[]) {
      timespec ts;
 
      WindowProperties properties = {1366, 768};
-     GLEngine eng(properties);
 
      // load fonts
      XFontStruct *font = XLoadQueryFont(dpy, "fixed");
@@ -117,7 +316,7 @@ int main(int argc, char *argv[]) {
 		XNextEvent(dpy, &xev);
 		if(xev.type == Expose) { // gl context resized
 			XGetWindowAttributes(dpy, win, &gwa);
-			eng.resize(gwa.width, gwa.height);
+			pEngine->resize(gwa.width, gwa.height);
 			XWarpPointer(dpy, win, win, 0, 0, gwa.width, gwa.height, gwa.width / 2, gwa.height / 2);
 		} else if(xev.type == KeyPress ) {
 		    //cout << "press: " << xev.xkey.keycode << endl;
@@ -137,7 +336,7 @@ int main(int argc, char *argv[]) {
 		XWarpPointer(dpy, win, win, 0, 0, gwa.width, gwa.height, gwa.width / 2, gwa.height / 2);
 		float dx = (xev.xbutton.x - (gwa.width / 2.0)) / (float)gwa.width;
 		float dy = (xev.xbutton.y - (gwa.height / 2.0)) / (float)gwa.height;
-		eng.mouseMove(dx, dy, dt);
+		pEngine->mouseMove(dx, dy, dt);
 	    }
 
 	    // handle keyboard - @todo: remove hard coded values
@@ -148,7 +347,7 @@ int main(int argc, char *argv[]) {
 	    clock_gettime(CLOCK_REALTIME, &ts);
 	    long time = ts.tv_nsec;
 
-	    eng.draw(ts.tv_sec, dt, keycontroller);
+	    pEngine->draw(ts.tv_sec, dt, keycontroller);
 
 	    clock_gettime(CLOCK_REALTIME, &ts);
 	    std::stringstream ss;
@@ -183,3 +382,4 @@ int main(int argc, char *argv[]) {
      XCloseDisplay(dpy);
      return 0;
 }
+#endif

@@ -18,12 +18,21 @@ public:
     void bind() { glUseProgram(programId_); }
     void release() { glUseProgram(0); }
 
+    inline GLuint getUniformLocation(const char *name) {
+	glGetUniformLocation(programId_, name);
+    }
+
     inline void setGeometryInputType(GLenum type) {
 	glProgramParameteriEXT(programId_, GL_GEOMETRY_INPUT_TYPE_EXT, type);
     }
 
     inline void setGeometryOutputType(GLenum type) {
 	glProgramParameteriEXT(programId_, GL_GEOMETRY_OUTPUT_TYPE_EXT, type);
+    }
+
+    inline void setUniformValue(const char *name, float3 val) {
+	GLint loc = glGetUniformLocation(programId_, name);
+	glUniform3fv(loc, 1, &val.x);
     }
 
     inline void setUniformValue(const char *name, float val) {
@@ -47,8 +56,6 @@ public:
     }
 
 protected:
-
-    char *readFile(const char *path, GLint &length);
 
     std::vector<GLuint> shaders_;
     GLuint programId_;
