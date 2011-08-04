@@ -29,6 +29,7 @@ protected:
     fftwf_plan m_fftplan;
     bool m_haveFFTPlan;
     float *m_w, *m_h, *m_dx, *m_dz; //the dispersion relation
+    float *m_kz, *m_kx; //precomputed kz/sqrt(kx^2+kz^2)
     float3 *m_heightmap;
     GLuint m_texId;
 };

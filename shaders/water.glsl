@@ -19,7 +19,7 @@ out vec3 pass_Normal;
 out vec4 pass_WsPos;
 void main(void) {
     float delta = 1.0 / N;
-    float tile = .075;
+    float tile = .015;
     vec3 pos = in_Position;
     float idxX = gl_InstanceID / int(grid.x) - (grid.x / 2.f);
     float idxY = gl_InstanceID % int(grid.y) - (grid.y / 2.f);

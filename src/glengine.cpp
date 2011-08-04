@@ -20,7 +20,7 @@ GLEngine::GLEngine(WindowProperties &properties) {
     height_ = properties.height;
 
 
-    glClearColor(0.2, 0.4, 0.5, 1.0);
+    glClearColor(0.0, 0.0, 0.0, 1.0);
     glViewport(0,0,width_,height_);
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
@@ -29,11 +29,11 @@ GLEngine::GLEngine(WindowProperties &properties) {
     glFrontFace(GL_CW);
     glDisable(GL_DITHER);
 
-    camera_.center = float3(0.0, 0.0, 0.0);
-    camera_.eye = float3(0.0, 1.0, 1.0);
+    camera_.center = float3(0.0, 10.0, 0.0);
+    camera_.eye = float3(0.0, 30.0, 50.0);
     camera_.up = float3(0.0, 1.0, 0.0);
     camera_.near = 0.1;
-    camera_.far = 100.0;
+    camera_.far = 500.0;
     camera_.rotx = camera_.roty = 0.f;
     camera_.fovy = 60.0;
 
@@ -57,23 +57,23 @@ GLEngine::GLEngine(WindowProperties &properties) {
 
     quad0_ = new GLQuad(float3(136, 77, 0),
 			float3(0.5, 0.5, 0),
-			float3(1366, 768, 1));
+			float3(width_, height_, 1));
 
     quad1_ = new GLQuad(float3(1, 1, 0),
 			float3(width_ * 0.5, height_ * 0.5, 0),
 			float3(width_, height_, 1));
 
-    plane0_ = new GLPlane(float3(250, 0, 250),
+    plane0_ = new GLPlane(float3(150, 0, 150),
 			 float3(0, 0, 0),
 			 float3(20, 1, 20));
 
     GLFFTWaterParams fftparams;
-    fftparams.A = 0.000000035f;
-    fftparams.V = 20.0f;
-    fftparams.w = 260 * 3.14159f / 180.0f;
-    fftparams.L = 200.0;
+    fftparams.A = 0.000000075f;
+    fftparams.V = 30.0f;
+    fftparams.w = 200 * 3.14159f / 180.0f;
+    fftparams.L = 250.0;
     fftparams.N = 256;
-    fftparams.chop = 2.5;
+    fftparams.chop = 2.75;
     fftwater_ = new GLFFTWater(fftparams);
 
     //load shader programs
@@ -98,7 +98,7 @@ GLEngine::~GLEngine() {
 void GLEngine::resize(int w, int h) {
     width_ = w; height_ = h;
     glViewport(0, 0, w, h);
-
+   // std::cout << w << " x " << h << std::endl;
 }
 
 void GLEngine::draw(float time, float dt, const KeyboardController *keyController) {
@@ -134,10 +134,10 @@ void GLEngine::draw(float time, float dt, const KeyboardController *keyControlle
     shaderPrograms_["water"]->setUniformValue("N", (float)(fftwater_->params().N));
     shaderPrograms_["water"]->setUniformValue("L", (float)(fftwater_->params().L));
     shaderPrograms_["water"]->setUniformValue("D", 20.f);
-    shaderPrograms_["water"]->setUniformValue("grid", float2(5.f, 5.f));
+    shaderPrograms_["water"]->setUniformValue("grid", float2(7.f, 7.f));
     shaderPrograms_["water"]->setUniformValue("eyePos", camera_.eye);
     shaderPrograms_["water"]->setUniformValue("sunPos", float3(0.0, 1.0, 0.0));
-    plane0_->draw(shaderPrograms_["water"], 25);
+    plane0_->draw(shaderPrograms_["water"], 49);
     shaderPrograms_["water"]->release();
     pMultisampleFramebuffer->release();
     pMultisampleFramebuffer->blit(*pFramebuffer);

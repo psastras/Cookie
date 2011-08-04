@@ -5,7 +5,7 @@ CC = g++
 ifeq ($(BUILD_TYPE), debug)
     CFLAGS = -Wall -g -std=c++0x
 else
-    CFLAGS = -O3 -msse2 -ffast-math -fno-signed-zeros -fno-trapping-math -std=c++0x
+    CFLAGS = -O3 -msse2 -ffast-math -funswitch-loops -funsafe-math-optimizations -fsingle-precision-constant -funsafe-loop-optimizations -fgcse-sm -fgcse-las -fsee -std=c++0x
 endif
 
 

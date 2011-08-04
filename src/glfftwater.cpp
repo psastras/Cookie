@@ -5,7 +5,6 @@
 GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
 
 #ifdef _WIN32
-
     m_h = (float *)__mingw_aligned_malloc((sizeof(float)*(params.N+2)*(params.N)), 8);
     m_dx = (float *)__mingw_aligned_malloc((sizeof(float)*(params.N+2)*(params.N)), 8);
     m_dz = (float *)__mingw_aligned_malloc((sizeof(float)*(params.N+2)*(params.N)), 8);
@@ -21,7 +20,7 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
     m_heightmap = new float3[(params.N)*(params.N)];
     m_params = params;
 
-    std::tr1::mt19937 prng(1000);
+    std::tr1::mt19937 prng(1);
     std::tr1::normal_distribution<float> normal;
     std::tr1::uniform_real<float> uniform;
     std::tr1::variate_generator<std::tr1::mt19937, std::tr1::normal_distribution<float> > randn(prng,normal);
@@ -36,6 +35,21 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
 		    m_htilde0[k][0] = m_htilde0[k][1] = P*A*sinf(theta);
 	    }
     }
+
+
+    m_kz = new float[params.N*(params.N / 2 + 1)];
+    m_kx = new float[params.N*(params.N / 2 + 1)];
+
+    const int hN = m_params.N / 2;
+    for(int y=0; y<m_params.N; y++) {
+	float kz = (float) (y - hN);
+	for(int x=0; x<=hN; x++) {
+		float kx = (float) (x - hN);
+		float k = 1.f/sqrtf(kx*kx+kz*kz);
+		m_kz[y*(hN+1)+x] = kz*k;
+		m_kx[y*(hN+1)+x] = kx*k;
+	}
+    }
 /*
     if(!fftwf_init_threads()) {
 	cerr << "Error initializing multithreaded fft."  << endl;
@@ -43,7 +57,7 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
 	fftwf_plan_with_nthreads(2);
     }
   */
-  m_fftplan = fftwf_plan_dft_c2r_2d(m_params.N, m_params.N, (fftwf_complex *)m_h, m_h, FFTW_ESTIMATE);
+    m_fftplan = fftwf_plan_dft_c2r_2d(m_params.N, m_params.N, (fftwf_complex *)m_h, m_h, FFTW_ESTIMATE);
 
     glGenTextures(1, &m_texId);
     glBindTexture(GL_TEXTURE_2D, m_texId);
@@ -54,7 +68,7 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
 }
 
 float GLFFTWater::phillips(float kx, float ky, float& w) {
-	const float damping = 1.f / 20.f;
+	const float damping = 1.f / 1.f;
 	float kk = kx*kx+ky*ky;
 	float kw = kx*cosf(m_params.w)+ky*sinf(m_params.w);
 	float l = m_params.V*m_params.V /  9.81;
@@ -73,50 +87,54 @@ GLuint GLFFTWater::heightfieldTexture() {
 }
 
 float3 *GLFFTWater::computeHeightfield(float t) {
+	const int hN = m_params.N / 2;
+	const int hNp2 = m_params.N + 2;
+
 	for(int y=0; y<m_params.N; y++) {
-	    float kz = (float) (y - m_params.N/2);
 	    int nk_x=m_params.N-1-y;
-	    for(int x=0; x<=m_params.N/2; x++) {
-		    float kx = (float) (x - m_params.N/2);
+	    for(int x=0; x<=hN; x++) {
 		    int nk_y=m_params.N-1-x;
 		    int idx = (nk_x)*(m_params.N)+nk_y;
 		    float pcos = cosf(m_w[y*m_params.N+x]*t);
 		    float psin = sinf(m_w[y*m_params.N+x]*t);
-		    // @TODO: double check this math simplification ...it's weird.
+		    // @TODO: check this math simplification ...
 		    float ht_r = m_htilde0[y*m_params.N+x][0]*pcos-m_htilde0[y*m_params.N+x][0]*psin+
 				 m_htilde0[idx][0]*pcos-m_htilde0[idx][0]*psin;
 		    float ht_c = -2.0f*m_htilde0[idx][0]*psin;
 
-		    m_h[x*2+(m_params.N+2)*y] = ht_r;
-		    m_h[x*2+1+(m_params.N+2)*y] = ht_c;
+		    m_h[x*2+hNp2*y] = ht_r;
+		    m_h[x*2+1+hNp2*y] = ht_c;
 
-		    float k = (float) 1.f/ sqrtf(kx * kx + kz * kz);
-		    m_dx[x*2+(m_params.N+2)*y] =  -ht_c*kx*k;
-		    m_dx[x*2+1+(m_params.N+2)*y] =  ht_r*kx*k;
-		    m_dz[x*2+(m_params.N+2)*y] =  -ht_c*kz*k;
-		    m_dz[x*2+1+(m_params.N+2)*y] =  ht_r*kz*k;
+		    float kkx = m_kx[y*(hN+1)+x];
+		    float kkz = m_kz[y*(hN+1)+x];
+
+		    m_dx[x*2+hNp2*y] =  -ht_c*kkx;
+		    m_dx[x*2+1+hNp2*y] =  ht_r*kkx;
+		    m_dz[x*2+hNp2*y] =  -ht_c*kkz;
+		    m_dz[x*2+1+hNp2*y] =  ht_r*kkz;
 	    }
 	}
 
-	m_dx[m_params.N + (m_params.N+2)*(m_params.N/2)] = 0.f;
-	m_dz[m_params.N + (m_params.N+2)*(m_params.N/2)] = 0.f;
-	m_dx[m_params.N + (m_params.N+2)*(m_params.N/2)+1] = 0.f;
-	m_dz[m_params.N + (m_params.N+2)*(m_params.N/2)+1] = 0.f;
+	m_dx[m_params.N + hNp2*hN] = 0.f;
+	m_dz[m_params.N + hNp2*hN] = 0.f;
+	m_dx[m_params.N + hNp2*hN+1] = 0.f;
+	m_dz[m_params.N + hNp2*hN+1] = 0.f;
 
 	fftwf_execute_dft_c2r(m_fftplan, (fftwf_complex *)m_h, m_h);
 	fftwf_execute_dft_c2r(m_fftplan, (fftwf_complex *)m_dx, m_dx);
 	fftwf_execute_dft_c2r(m_fftplan, (fftwf_complex *)m_dz, m_dz);
 
+	const float scale = m_params.L / (float)m_params.N * m_params.chop;
 	for(int y=0; y<m_params.N;y++) {
 		for(int x=0; x<m_params.N; x++) {
 			if((x+y)%2==0) {
-				m_heightmap[x+m_params.N*y].x = m_dx[x+(m_params.N+2)*y]*m_params.L / (float)m_params.N * m_params.chop;
-				m_heightmap[x+m_params.N*y].y = m_h[x+(m_params.N+2)*y];
-				m_heightmap[x+m_params.N*y].z = m_dz[x+(m_params.N+2)*y]*m_params.L / (float)m_params.N * m_params.chop;
+				m_heightmap[x+m_params.N*y].x = m_dx[x+hNp2*y]*scale;
+				m_heightmap[x+m_params.N*y].y = m_h[x+hNp2*y];
+				m_heightmap[x+m_params.N*y].z = m_dz[x+hNp2*y]*scale;
 			} else {
-				m_heightmap[x+m_params.N*y].x = -m_dx[x+(m_params.N+2)*y]*m_params.L / (float)m_params.N * m_params.chop;
-				m_heightmap[x+m_params.N*y].y = -m_h[x+(m_params.N+2)*y];
-				m_heightmap[x+m_params.N*y].z = -m_dz[x+(m_params.N+2)*y]*m_params.L / (float)m_params.N * m_params.chop;
+				m_heightmap[x+m_params.N*y].x = -m_dx[x+hNp2*y]*scale;
+				m_heightmap[x+m_params.N*y].y = -m_h[x+hNp2*y];
+				m_heightmap[x+m_params.N*y].z = -m_dz[x+hNp2*y]*scale;
 			}
 		}
 	}

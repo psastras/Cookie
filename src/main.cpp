@@ -38,7 +38,8 @@ WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     case WM_MOUSEMOVE:
 	return 0;
     case WM_SIZE:
-	glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+	//glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+	pEngine->resize(LOWORD(lParam), HIWORD(lParam));
 	//std::cout << "(w , h) : " << LOWORD(lParam) << " x " << HIWORD(lParam) << std::endl;
         return 0;
     case WM_KEYUP:
@@ -152,7 +153,7 @@ int main(int argc, char *argv[]) {
     MSG   msg;				/* message */
 
     char *windowName = (char *)"OpenGL Water Demo [2011 - psastras]";
-    hWnd = CreateOpenGLWindow(windowName, 100, 100, 1366, 768, PFD_TYPE_RGBA, 0);
+    hWnd = CreateOpenGLWindow(windowName, 100, 100, properties.width, properties.height, PFD_TYPE_RGBA, 0);
     if (hWnd == NULL) exit(1);
 
     hDC = GetDC(hWnd);
@@ -208,7 +209,8 @@ int main(int argc, char *argv[]) {
 	pEngine->mouseMove(lpt.x - pt.x, pt.y - lpt.y, dt / 1000.f);
 
 	StartCounter();
-	pEngine->draw(st.wMinute * 60 + st.wSecond + st.wMilliseconds / 1000.f, dt / 1000.f, pKeyController);
+	pEngine->draw(st.wMinute * 60 + st.wSecond + st.wMilliseconds / 1000.f,
+		      dt / 1000.f, pKeyController);
 	dt = GetCounter();
 
 	std::stringstream ss;

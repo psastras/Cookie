@@ -42,4 +42,12 @@ class GLPlane : public GLPrimitive {
 	void tesselate(float3 tess, float3 translate, float3 scale);
 };
 
+class GLIcosohedron : public GLPrimitive {
+    public:
+	GLIcosohedron(float3 tess, float3 translate, float3 scale);
+	~GLIcosohedron();
+
+	void tesselate(float3 tess, float3 translate, float3 scale);
+};
+
 #endif // GLPRIMITIVE_H

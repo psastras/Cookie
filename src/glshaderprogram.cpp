@@ -38,6 +38,10 @@ void GLShaderProgram::loadShaderFromSource(GLenum type, std::string source) {
 	ss << "#define _VERTEX_" << endl;
     else if(type == GL_GEOMETRY_SHADER)
 	ss << "#define _GEOMETRY_" << endl;
+    else if(type == GL_TESS_EVALUATION_SHADER)
+	ss << "#define _TESSEVAL_" << endl;
+    else if(type == GL_TESS_CONTROL_SHADER)
+	ss << "#define _TESSCONTROL_" << endl;
     ifstream file(source.c_str());
     string line;
     if (file.is_open()) {
