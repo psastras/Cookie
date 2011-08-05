@@ -49,12 +49,13 @@ protected:
 
     void processKeyEvents(const KeyboardController *keycontroller, float dt);
     GLFFTWater *fftwater_;
-    GLPrimitive *quad0_, *quad1_, *plane0_;
+
+
     int width_, height_;
     Camera camera_;
     VSML *vsml_;
     unordered_map<const char*, GLShaderProgram *, hash<const char*>, eqstr> shaderPrograms_;
-
+    unordered_map<const char*, GLPrimitive *> primtives_;
     RenderMode renderMode_;
 };
 

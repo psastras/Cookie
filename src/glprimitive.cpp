@@ -1,8 +1,9 @@
 #include "glprimitive.h"
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
-GLPrimitive::GLPrimitive() : vertexId_(0), indexId_(0), arrayId_(0) {
-
+GLPrimitive::GLPrimitive(float3 &tess, float3 &translate, float3 &scale) : vertexId_(0), indexId_(0), arrayId_(0) {
+    translate_ = translate;
+    scale_ = scale;
 }
 
 GLPrimitive::~GLPrimitive() {
@@ -50,6 +51,7 @@ void GLPrimitive::draw(GLShaderProgram *program) {
     glEnableVertexAttribArray(program->getAttributeLocation("in_TexCoord"));
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexId_);
+    if(type_ == GL_PATCHES) glPatchParameteri(GL_PATCH_VERTICES, 3);
     glDrawElements(type_, idxCount_, GL_UNSIGNED_SHORT, BUFFER_OFFSET(0));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glDisableVertexAttribArray(program->getAttributeLocation("in_Position"));
@@ -76,7 +78,7 @@ void GLPrimitive::draw() {
 
 }
 
-GLQuad::GLQuad(float3 tess, float3 translate, float3 scale) {
+GLQuad::GLQuad(float3 tess, float3 translate, float3 scale) : GLPrimitive(tess, translate, scale) {
      this->tesselate(tess, translate, scale);
 }
 
@@ -133,7 +135,7 @@ void GLQuad::tesselate(float3 tess, float3 translate, float3 scale) {
     tOffset_ = 24;
 }
 
-GLPlane::GLPlane(float3 tess, float3 translate, float3 scale) {
+GLPlane::GLPlane(float3 tess, float3 translate, float3 scale) : GLPrimitive(tess, translate, scale) {
      this->tesselate(tess, translate, scale);
 }
 
@@ -190,32 +192,18 @@ void GLPlane::tesselate(float3 tess, float3 translate, float3 scale) {
     tOffset_ = 24;
 }
 
-GLIcosohedron::GLIcosohedron(float3 tess, float3 translate, float3 scale) {
+GLIcosohedron::GLIcosohedron(float3 tess, float3 translate, float3 scale) : GLPrimitive(tess, translate, scale) {
     this->tesselate(tess, translate, scale);
 }
 
 void GLIcosohedron::tesselate(float3 tess, float3 translate, float3 scale) {
-    const int pIndices[] = {
-	2, 1, 0,
-	3, 2, 0,
-	4, 3, 0,
-	5, 4, 0,
-	1, 5, 0,
-	11, 6,  7,
-	11, 7,  8,
-	11, 8,  9,
-	11, 9,  10,
-	11, 10, 6,
-	1, 2, 6,
-	2, 3, 7,
-	3, 4, 8,
-	4, 5, 9,
-	5, 1, 10,
-	2,  7, 6,
-	3,  8, 7,
-	4,  9, 8,
-	5, 10, 9,
-	1, 6, 10 };
+    type_ = GL_PATCHES;
+
+    const unsigned short pIndices[] = {
+	2,1,0,3,2,0,4,3,0,5,4,0,1,5,0,11,6,7,11,7,8,11,8,9,11,9,10,11,10,6,1,2,6,
+	2,3,7,3,4,8,4,5,9,5,1,10,2,7,6,3,8,7,4,9,8,5,10,9,1,6,10
+    };
+
     GLVertex pVertex[12];
     pVertex[0].p = pVertex[0].n = float3(0.000f,  0.000f, 1.000f);
     pVertex[1].p = pVertex[1].n = float3(0.894f,  0.000f,  0.447f);
@@ -229,40 +217,20 @@ void GLIcosohedron::tesselate(float3 tess, float3 translate, float3 scale) {
     pVertex[9].p = pVertex[9].n = float3(-0.276f, -0.851f, -0.447f);
     pVertex[10].p = pVertex[10].n = float3(0.724f, -0.526f, -0.447f);
     pVertex[11].p = pVertex[11].n = float3(0.000f,  0.000f, -1.000f);
-/*
-    const float Verts[] = {
-	 0.000f,  0.000f,  1.000f,
-	 0.894f,  0.000f,  0.447f,
-	 0.276f,  0.851f,  0.447f,
-	-0.724f,  0.526f,  0.447f,
-	-0.724f, -0.526f,  0.447f,
-	 0.276f, -0.851f,  0.447f,
-	 0.724f,  0.526f, -0.447f,
-	-0.276f,  0.851f, -0.447f,
-	-0.894f,  0.000f, -0.447f,
-	-0.276f, -0.851f, -0.447f,
-	 0.724f, -0.526f, -0.447f,
-	 0.000f,  0.000f, -1.000f };
-*/
+
+    for(int i=0; i<12; i++) {
+	pVertex[i].p *= scale;
+	pVertex[i].p += translate;
+    }
+
     idxCount_ = sizeof(pIndices) / sizeof(pIndices[0]);
 
-    // Create the VAO:
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    // Create the VBO for positions:
-    GLuint positions;
-    GLsizei stride = 3 * sizeof(float);
-    glGenBuffers(1, &positions);
-    glBindBuffer(GL_ARRAY_BUFFER, positions);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(pVertex), pVertex, GL_STATIC_DRAW);
-    //glEnableVertexAttribArray(PositionSlot);
-    //glVertexAttribPointer(PositionSlot, 3, GL_FLOAT, GL_FALSE, stride, 0);
-
-    // Create the VBO for indices:
-    GLuint indices;
-    glGenBuffers(1, &indices);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(pIndices), pIndices, GL_STATIC_DRAW);
+    glGenVertexArrays(1, &arrayId_);
+    glBindVertexArray(arrayId_);
+    glGenBuffers(1, &vertexId_);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexId_);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLVertex)*12, pVertex, GL_STATIC_DRAW);
+    glGenBuffers(1, &indexId_);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexId_);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short)*idxCount_, pIndices, GL_STATIC_DRAW);
 }

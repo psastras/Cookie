@@ -20,7 +20,7 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
     m_heightmap = new float3[(params.N)*(params.N)];
     m_params = params;
 
-    std::tr1::mt19937 prng(1);
+    std::tr1::mt19937 prng(1337);
     std::tr1::normal_distribution<float> normal;
     std::tr1::uniform_real<float> uniform;
     std::tr1::variate_generator<std::tr1::mt19937, std::tr1::normal_distribution<float> > randn(prng,normal);
@@ -30,7 +30,7 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
 	    for(int j=0; j<params.N; j++, k++) {
 		    float k_y = (-(params.N-1)*0.5f+j)*(2.f*3.141592654f / params.L);
 		    float A = randn();
-		    float theta = randu() * 2.f * 3.141592654f;
+		    float theta = randu()*2.f*3.141592654f;
 		    float P = (k_x==0.f && k_y==0.0f) ? 0.f : sqrtf(phillips(k_x,k_y,m_w[k]));
 		    m_htilde0[k][0] = m_htilde0[k][1] = P*A*sinf(theta);
 	    }
@@ -68,11 +68,11 @@ GLFFTWater::GLFFTWater(GLFFTWaterParams &params) {
 }
 
 float GLFFTWater::phillips(float kx, float ky, float& w) {
-	const float damping = 1.f / 1.f;
+	const float damping = 1.f / .5f;
 	float kk = kx*kx+ky*ky;
 	float kw = kx*cosf(m_params.w)+ky*sinf(m_params.w);
 	float l = m_params.V*m_params.V /  9.81;
-	w = powf((9.81*sqrtf(kk)),1.f); //compute the dispersion relation
+	w = powf((9.81*sqrtf(kk)),0.8f); //compute the dispersion relation
 	float p = m_params.A*expf(-1.f / (l*l*kk))/(kk*kk*kk)*(kw*kw);
 	float d = expf(-kk*damping*damping);
 	return kw < 0.f ? p*0.25f*d : p*d;

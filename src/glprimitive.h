@@ -17,13 +17,18 @@ class GLPrimitive {
       void draw();
       void draw(GLShaderProgram *program);
       void draw(GLShaderProgram *program, int instances);
+
+      const float3& scale() { return scale_; }
+      const float3& translate() { return scale_; }
   protected:
-      GLPrimitive();
+      GLPrimitive(float3 &tess, float3 &translate, float3 &scale);
 
       GLuint vertexId_, indexId_, arrayId_;
       GLenum type_;
       GLuint idxCount_;
       int vOffset_, tOffset_, nOffset_;
+
+      float3 scale_, translate_;
 };
 
 class GLQuad : public GLPrimitive {

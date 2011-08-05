@@ -33,7 +33,7 @@ GLEngine::GLEngine(WindowProperties &properties) {
     camera_.eye = float3(0.0, 30.0, 50.0);
     camera_.up = float3(0.0, 1.0, 0.0);
     camera_.near = 0.1;
-    camera_.far = 500.0;
+    camera_.far = 2000.0;
     camera_.rotx = camera_.roty = 0.f;
     camera_.fovy = 60.0;
 
@@ -55,25 +55,27 @@ GLEngine::GLEngine(WindowProperties &properties) {
     pFramebuffer = new GLFramebufferObject(params);
 
 
-    quad0_ = new GLQuad(float3(136, 77, 0),
-			float3(0.5, 0.5, 0),
-			float3(width_, height_, 1));
+    primtives_["quad0"] = new GLQuad(float3(136, 77, 0),
+			  float3(0.5, 0.5, 0),
+			  float3(width_, height_, 1));
 
-    quad1_ = new GLQuad(float3(1, 1, 0),
+    primtives_["quad1"] = new GLQuad(float3(1, 1, 0),
 			float3(width_ * 0.5, height_ * 0.5, 0),
 			float3(width_, height_, 1));
 
-    plane0_ = new GLPlane(float3(150, 0, 150),
+    primtives_["plane0"] = new GLPlane(float3(40, 0, 40),
 			 float3(0, 0, 0),
 			 float3(20, 1, 20));
 
+    primtives_["sphere0"]  = new GLIcosohedron(float3::zero(), float3::zero(), float3(1000, 1000, 1000));
+
     GLFFTWaterParams fftparams;
-    fftparams.A = 0.000000075f;
-    fftparams.V = 30.0f;
+    fftparams.A = 0.000000395f;
+    fftparams.V = 80.0f;
     fftparams.w = 200 * 3.14159f / 180.0f;
-    fftparams.L = 250.0;
+    fftparams.L = 200.0;
     fftparams.N = 256;
-    fftparams.chop = 2.75;
+    fftparams.chop = 5.0;
     fftwater_ = new GLFFTWater(fftparams);
 
     //load shader programs
@@ -87,12 +89,24 @@ GLEngine::GLEngine(WindowProperties &properties) {
     shaderPrograms_["water"]->loadShaderFromSource(GL_FRAGMENT_SHADER, "shaders/water.glsl");
     shaderPrograms_["water"]->link();
 
+    shaderPrograms_["solid"] = new GLShaderProgram();
+    shaderPrograms_["solid"]->loadShaderFromSource(GL_VERTEX_SHADER, "shaders/solid.glsl");
+    shaderPrograms_["solid"]->loadShaderFromSource(GL_FRAGMENT_SHADER, "shaders/solid.glsl");
+    shaderPrograms_["solid"]->link();
 
+    shaderPrograms_["icosohedron"] = new GLShaderProgram();
+    shaderPrograms_["icosohedron"]->loadShaderFromSource(GL_VERTEX_SHADER, "shaders/icosohedron.glsl");
+    shaderPrograms_["icosohedron"]->loadShaderFromSource(GL_FRAGMENT_SHADER, "shaders/icosohedron.glsl");
+    shaderPrograms_["icosohedron"]->loadShaderFromSource(GL_TESS_CONTROL_SHADER, "shaders/icosohedron.glsl");
+    shaderPrograms_["icosohedron"]->loadShaderFromSource(GL_TESS_EVALUATION_SHADER, "shaders/icosohedron.glsl");
+    shaderPrograms_["icosohedron"]->link();
 }
 
 
 GLEngine::~GLEngine() {
-    delete shaderPrograms_["default"];
+//    for (auto itr = shaderPrograms_.cbegin(); itr != shaderPrograms_.cend(); ++itr)
+//	    delete &itr;
+    //delete shaderPrograms_["default"];
 }
 
 void GLEngine::resize(int w, int h) {
@@ -103,7 +117,7 @@ void GLEngine::resize(int w, int h) {
 
 void GLEngine::draw(float time, float dt, const KeyboardController *keyController) {
 
-    //glClear(GL_COLOR_BUFFER_BIT);
+
 
     //compute ocean heightfield
     float3 *data = fftwater_->computeHeightfield(time*2);
@@ -120,6 +134,12 @@ void GLEngine::draw(float time, float dt, const KeyboardController *keyControlle
     vsml_->rotate(camera_.roty, 0.f, 1.f, 0.f);
     vsml_->translate(-camera_.eye.x, -camera_.eye.y, -camera_.eye.z);
 
+   //begin icos test
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+
+
     pMultisampleFramebuffer->bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     shaderPrograms_["water"]->bind();
@@ -134,11 +154,25 @@ void GLEngine::draw(float time, float dt, const KeyboardController *keyControlle
     shaderPrograms_["water"]->setUniformValue("N", (float)(fftwater_->params().N));
     shaderPrograms_["water"]->setUniformValue("L", (float)(fftwater_->params().L));
     shaderPrograms_["water"]->setUniformValue("D", 20.f);
-    shaderPrograms_["water"]->setUniformValue("grid", float2(7.f, 7.f));
+    shaderPrograms_["water"]->setUniformValue("grid", float2(30.f, 30.f));
     shaderPrograms_["water"]->setUniformValue("eyePos", camera_.eye);
     shaderPrograms_["water"]->setUniformValue("sunPos", float3(0.0, 1.0, 0.0));
-    plane0_->draw(shaderPrograms_["water"], 49);
+    primtives_["plane0"]->draw(shaderPrograms_["water"], 900);
     shaderPrograms_["water"]->release();
+
+
+    shaderPrograms_["icosohedron"]->bind();
+    vsml_->initUniformLocs(shaderPrograms_["icosohedron"]->getUniformLocation("modelviewMatrix"),
+			   shaderPrograms_["icosohedron"]->getUniformLocation("projMatrix"));
+    vsml_->matrixToUniform(VSML::MODELVIEW);
+    vsml_->matrixToUniform(VSML::PROJECTION);
+    float distance = 1.f / (abs(camera_.eye.getDistance(primtives_["sphere0"]->translate()) - primtives_["sphere0"]->scale().x) + 0.0001f);
+    float tess = 12;//(float)max((int)(distance * 150), 3);
+    shaderPrograms_["icosohedron"]->setUniformValue("TessLevelInner", tess);
+    shaderPrograms_["icosohedron"]->setUniformValue("TessLevelOuter", tess);
+    primtives_["sphere0"]->draw(shaderPrograms_["icosohedron"]);
+    shaderPrograms_["icosohedron"]->release();
+
     pMultisampleFramebuffer->release();
     pMultisampleFramebuffer->blit(*pFramebuffer);
 
@@ -156,7 +190,7 @@ void GLEngine::draw(float time, float dt, const KeyboardController *keyControlle
     glActiveTexture(GL_TEXTURE0);
     pFramebuffer->bindsurface(0);
     shaderPrograms_["default"]->setUniformValue("tex", 0);
-    quad1_->draw(shaderPrograms_["default"]);
+    primtives_["quad1"]->draw(shaderPrograms_["default"]);
     pFramebuffer->unbindsurface();
     shaderPrograms_["default"]->release();
 
@@ -173,6 +207,7 @@ void GLEngine::mouseMove(float dx, float dy, float dt) {
 
 void GLEngine::processKeyEvents(const KeyboardController *keycontroller, float dt) {
 
+    // @todo move these key defs somewhere.
 #ifdef _WIN32
 #define KEY_W 87
 #define KEY_A 65

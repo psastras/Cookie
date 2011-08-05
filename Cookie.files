@@ -19,3 +19,5 @@ src/glfftwater.h
 src/glfftwater.cpp
 3rdparty/VSML/vsml.h
 3rdparty/VSML/vsml.cpp
+shaders/solid.glsl
+shaders/icosohedron.glsl

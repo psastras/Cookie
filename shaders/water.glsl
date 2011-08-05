@@ -18,8 +18,9 @@ in vec3 in_TexCoord;
 out vec3 pass_Normal;
 out vec4 pass_WsPos;
 void main(void) {
-    float delta = 1.0 / N;
-    float tile = .015;
+
+    float tile =0.01;
+    float delta =(1.0/N);
     vec3 pos = in_Position;
     float idxX = gl_InstanceID / int(grid.x) - (grid.x / 2.f);
     float idxY = gl_InstanceID % int(grid.y) - (grid.y / 2.f);
@@ -29,12 +30,12 @@ void main(void) {
     pass_WsPos = (vec4(pos,1.0)+offset);
 
 
-    float p0 = texture2D(fftTex, (pass_WsPos.xz * tile + vec2(0.0, -delta)) ).y;
-    float p1 = texture2D(fftTex, (pass_WsPos.xz * tile + vec2(-delta, 0.0) )).y;
-    float p2 = texture2D(fftTex, (pass_WsPos.xz * tile + vec2(delta, 0.0) ) ).y;
-    float p3 = texture2D(fftTex, (pass_WsPos.xz * tile + vec2(0.0, delta) ) ).y;
+    float p0 = texture2D(fftTex, (pass_WsPos.xz*tile + vec2(0.0, -delta)) ).y;
+    float p1 = texture2D(fftTex, (pass_WsPos.xz*tile + vec2(-delta, 0.0) )).y;
+    float p2 = texture2D(fftTex, (pass_WsPos.xz*tile + vec2(delta, 0.0) ) ).y;
+    float p3 = texture2D(fftTex, (pass_WsPos.xz*tile + vec2(0.0, delta) ) ).y;
 
-    pass_Normal = vec3(p1-p2, 2.0*L*delta, p0-p3);
+    pass_Normal = vec3(p1-p2,2.0*L*delta,p0-p3);
 
     gl_Position = projMatrix * modelviewMatrix * pass_WsPos;
 }
@@ -45,18 +46,30 @@ void main(void) {
 in vec3 pass_Normal;
 in vec4 pass_WsPos;
 out vec4 out_Color;
+
+vec4 atmosphere(float y) {
+    vec4 c0 = vec4(0.172, 0.290, 0.486, 1.000);
+    vec4 c1 = vec4(0.321, 0.482, 0.607, 1.000);
+    if(y >= 0.0)
+	return mix(c1,c0,y/1000.0);
+    else
+	return c1;
+}
+
 void main() {
-    vec4 baseColor = vec4(0.12, 0.20, 0.24, 0.0);
+    vec4 baseColor = vec4(0.133, 0.411, 0.498, 0.0);
     vec3 norm = normalize(pass_Normal);
-    vec3 eyeDir	=  normalize(eyePos - pass_WsPos.xyz);
-    vec3 reflDir = reflect(eyeDir, norm);
+    vec3 eyeDir	=  normalize(eyePos - pass_WsPos.yyy);
+    vec3 reflDir = reflect((eyePos - pass_WsPos.xyz), norm);
     if(reflDir.y < 0.0) reflDir.y *= reflDir.y;
     reflDir.y = max(0.1, reflDir.y);
-    vec4 atmoColor = vec4(0.22, 0.28, 0.35, 0.0) / (reflDir.y*2.0); //@todo: sample from skybox
-    float cos_angle = dot(norm, eyeDir);
-    vec4 waterColor = mix(baseColor, atmoColor, abs(cos_angle));
+    vec4 transColor = vec4(0.0, 0.278, 0.321, 0.0);// / (reflDir.y*2.0); //@todo: sample from skybox
 
-    out_Color = waterColor;// vec4(0.4, 0.1, 0.5, 1.0);
+    float cos_angle = dot(norm, eyeDir);
+    vec4 waterColor = mix(baseColor, transColor*transColor, cos_angle);
+    reflDir = normalize(reflDir);
+    vec4 atmoColor = atmosphere(reflDir.y*1000.0);
+    out_Color =  mix(waterColor, atmoColor, 0.3);// vec4(0.4, 0.1, 0.5, 1.0);
 }
 #endif
 
